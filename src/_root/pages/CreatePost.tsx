@@ -1,7 +1,5 @@
 
-import Postform from '@/components/forms/Postform'
-import React from 'react'
-
+import Postform from '@/components/forms/PostForm'
 const CreatePost = () => {
   return (
     <div className='flex flex-1'>
@@ -15,7 +13,7 @@ const CreatePost = () => {
 
         </div>
 
-        <Postform />
+        <Postform action={'Create'} />
       </div>
     </div>
   )

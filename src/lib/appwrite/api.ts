@@ -1,6 +1,6 @@
-import { INewUser } from "@/types";
-import {ID, Query} from 'appwrite'
-import { account, appwriteConfig, avatars, databases } from "./config";
+import { INewPost, INewUser, IUpdatePost } from "@/types";
+import {ID, ImageGravity, Query} from 'appwrite'
+import { account, appwriteConfig, avatars, databases, storage } from "./config";
 
 export async function createUserAccount(user:INewUser) {
     try {
@@ -118,6 +118,263 @@ export async function signOutAccount() {
 
         return session;
 
+    } catch (error) {
+        console.log(error);
+        
+    }
+}
+
+export async function createPost(post: INewPost) {
+    try {
+      // Upload file to appwrite storage
+      const uploadedFile = await uploadFile(post.file[0]);
+      
+      if (!uploadedFile) throw Error;
+  
+      // Get file url
+      const fileUrl = getFilePreview(uploadedFile.$id);
+      
+      if (!fileUrl) {
+        await deleteFile(uploadedFile.$id);
+        throw Error;
+      }
+  
+      // Convert tags into array
+      const tags = post.tags?.replace(/ /g, "").split(",") || [];
+      
+      // Create post
+      const newPost = await databases.createDocument(
+        appwriteConfig.databaseid,
+        appwriteConfig.postCollectionid,
+        ID.unique(),
+        {
+          creater: post.userId,
+          caption: post.caption,
+          imageUrl: fileUrl,
+          imageID: uploadedFile.$id,
+          location: post.location,
+          tags: tags,
+        }
+      );
+  
+      if (!newPost) {
+        await deleteFile(uploadedFile.$id);
+        throw Error;
+      }
+
+      return newPost;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  
+  // ============================== UPLOAD FILE
+export async function uploadFile(file: File) {
+try {
+    const uploadedFile = await storage.createFile(
+    appwriteConfig.storageid,
+    ID.unique(),
+    file
+    );
+
+    return uploadedFile;
+} catch (error) {
+    console.log(error);
+}
+}
+
+// ============================== GET FILE URL
+export function getFilePreview(fileId: string) {
+try {
+    const fileUrl = storage.getFilePreview(
+    appwriteConfig.storageid,
+    fileId,
+    2000,
+    2000,
+    ImageGravity.Top,
+    100
+    );
+
+    if (!fileUrl) throw Error;
+
+    return fileUrl;
+} catch (error) {
+    console.log(error);
+}
+}
+
+// ============================== DELETE FILE
+export async function deleteFile(fileId: string) {
+try {
+    await storage.deleteFile(appwriteConfig.storageid, fileId);
+
+    return { status: "ok" };
+} catch (error) {
+    console.log(error);
+}
+}
+
+// ============================== Get Recnet Posts
+export async function getRecentPosts(){
+    const posts = await databases.listDocuments(
+        appwriteConfig.databaseid,
+        appwriteConfig.postCollectionid,
+        [Query.orderDesc('$createdAt'),Query.limit(20)]
+    )
+
+    if(!posts) throw Error;
+
+    return posts;
+}
+
+export async function likePost (postId :string , likesArray : string[]) {
+
+    try {
+        
+        const updatePost = await databases.updateDocument(
+            appwriteConfig.databaseid,
+            appwriteConfig.postCollectionid,
+            postId,
+            {
+                likes : likesArray
+            }
+        )
+
+        if(!updatePost) throw Error;
+
+        return updatePost;
+        
+    } catch (error) {
+        console.log(error);
+        
+    }
+}
+
+export async function savePost (postId :string ,userId :string) {
+
+    try {
+        
+        const updatePost = await databases.createDocument(
+            appwriteConfig.databaseid,
+            appwriteConfig.savesCollectionid,
+            ID.unique(),
+            {
+                user : userId,
+                post : postId,
+            }
+        )
+
+        if(!updatePost) throw Error;
+
+        return updatePost;
+
+    } catch (error) {
+        console.log(error);
+        
+    }
+}
+
+export async function delteSavedPost(savedRecordId : string) {
+    
+    try {
+        const statusCode = await databases.deleteDocument(
+            appwriteConfig.databaseid,
+            appwriteConfig.savesCollectionid,
+            savedRecordId,
+        );
+        
+
+        if(!statusCode) throw Error;
+
+        return {status : 'ok'}
+    } catch (error) {
+        console.log(error);
+        
+    }
+}
+
+export async function getPostById (postId : string) {
+    try {
+
+        const post = await databases.getDocument(
+            appwriteConfig.databaseid,
+            appwriteConfig.postCollectionid,
+            postId,
+        )
+
+        if(!post) throw Error;
+
+        return post;
+
+    } catch (error) {
+        console.log(error);
+        
+    }
+}
+
+export async function updatePost (post : IUpdatePost) {
+
+    const hasFileToUpdate = post.file.length>0;
+    try {
+
+        let image = {
+            imageUrl : post.imageUrl,
+            imageId : post.imageId,
+        }
+
+        if(hasFileToUpdate){
+            // Upload file to appwrite storage
+            const uploadedFile = await uploadFile(post.file[0]);
+            
+            if (!uploadedFile) throw Error;
+            // Get file url
+            const fileUrl = getFilePreview(uploadedFile.$id);
+            
+            if (!fileUrl) {
+                await deleteFile(uploadedFile.$id);
+                throw Error;
+            }
+            image ={...image, imageUrl : new URL(fileUrl), imageId : uploadedFile.$id}
+        }
+
+
+        // Convert tags into array
+        const tags = post.tags?.replace(/ /g, "").split(",") || [];
+        
+        // Create post
+        const updatedPost = await databases.updateDocument(
+            appwriteConfig.databaseid,
+            appwriteConfig.postCollectionid,
+            post.postId,
+            {
+            caption: post.caption,
+            imageUrl: image.imageUrl,
+            imageID: image.imageId,
+            location: post.location,
+            tags: tags,
+            }
+        );
+
+        if (!updatedPost) {
+            await deleteFile(post.imageId);
+            throw Error;
+        }
+
+        return updatedPost;
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+export async function deletePost (postId:string , imageId:string) {
+    if(!postId || !imageId)  throw Error;
+
+    try {
+        await databases.deleteDocument(
+            appwriteConfig.databaseid,
+            appwriteConfig.postCollectionid,
+            postId
+        )
     } catch (error) {
         console.log(error);
         
