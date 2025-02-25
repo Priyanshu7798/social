@@ -153,13 +153,11 @@ export const useGetPost=()=>{
     return useInfiniteQuery({
         queryKey : [QUERY_KEYS.GET_INFINITE_POSTS],
         queryFn : getInfinitePost,
-        getNextPageParam : (lastPage) =>{
-            if(lastPage && lastPage.documents.length===0) return null;
-
-            const lastId = lastPage?.documents[lastPage?.documents.length-1].$id;
-
-            return lastId;
-        }
+        getNextPageParam: (lastPage): number | undefined => {
+            if (!lastPage?.documents?.length) return undefined;
+            return Number(lastPage.documents[lastPage.documents.length - 1].$id);
+        },
+        initialPageParam: 0
     })
 }
 

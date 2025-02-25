@@ -1,6 +1,6 @@
 
 import { sidebarLinks } from '@/constants';
-import { useUserContext } from '@/context/authContext';
+import { useUserContext } from '@/context/AuthContexts';
 import { useSignOutAccount } from '@/lib/react-query/queriesAndMutations'
 import { INavLink } from '@/types';
 import { useEffect } from 'react';

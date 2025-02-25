@@ -11,7 +11,7 @@ import { SignupValidation } from '@/lib/validation'
 import Loader from '@/components/shared/Loader'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCreateUserAccountMutation, useSignInAccount} from '@/lib/react-query/queriesAndMutations'
-import { useUserContext } from "@/context/authContext"
+import { useUserContext } from "@/context/AuthContexts"
 
 
 const SignupForm = () => {

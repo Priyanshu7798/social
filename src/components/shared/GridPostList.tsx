@@ -1,4 +1,4 @@
-import { useUserContext } from "@/context/authContext";
+import { useUserContext } from "@/context/AuthContexts";
 import { Models } from "appwrite";
 import { Link } from "react-router-dom";
 import PostStats from "./PostStats";
